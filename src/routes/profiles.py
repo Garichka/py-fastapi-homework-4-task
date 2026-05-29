@@ -44,6 +44,7 @@ async def create_profile(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has expired."
         )
 
+
     token_user_id = payload.get("user_id") or payload.get("id") or payload.get("sub")
 
     stmt = (
