@@ -52,7 +52,11 @@ class TestingSettings(BaseAppSettings):
     SECRET_KEY_ACCESS: str = "SECRET_KEY_ACCESS"
     SECRET_KEY_REFRESH: str = "SECRET_KEY_REFRESH"
     JWT_SIGNING_ALGORITHM: str = "HS256"
-
+    POSTGRES_USER: str = "test_user"
+    POSTGRES_PASSWORD: str = "test_password"
+    POSTGRES_DB: str = "test_db"
+    POSTGRES_HOST: str = "localhost"
+    POSTGRES_DB_PORT: int = 5432
     def model_post_init(self, __context: dict[str, Any] | None = None) -> None:
         object.__setattr__(self, 'PATH_TO_DB', ":memory:")
         object.__setattr__(
