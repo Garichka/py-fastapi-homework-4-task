@@ -122,13 +122,11 @@ async def create_profile(
     try:
         validate_image(avatar)
         avatar_data = await avatar.read()
-
         file_key = f"avatars/{user_id}_avatar.jpg"
         await s3_client.upload_file(file_key, avatar_data)
-
-    except Exception as e:
-        if isinstance(e, ValueError):
-            raise HTTPException(status_code=422, detail=str(e))
+    except ValueError as ve:
+        raise HTTPException(status_code=422, detail=str(ve))
+    except Exception:
         raise HTTPException(
             status_code=500, detail="Failed to upload avatar. Please try again later."
         )
