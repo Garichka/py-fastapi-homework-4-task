@@ -7,7 +7,7 @@ from fastapi import (
     Form,
     HTTPException,
     status,
-    Request,
+    Header,
 )
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -24,34 +24,19 @@ from validation.profile import validate_image
 router = APIRouter()
 
 
-@router.post(
-    "/users/{user_id}/profile/",
-    response_model=ProfileResponseSchema,
-    status_code=status.HTTP_201_CREATED,
-)
-async def create_profile(
-    user_id: int,
-    request: Request,
-    first_name: str = Form(...),
-    last_name: str = Form(...),
-    gender: str = Form(...),
-    date_of_birth: date = Form(...),
-    info: str = Form(...),
-    avatar: UploadFile = File(...),
+async def get_current_user(
+    authorization: str = Header(None),
     db: AsyncSession = Depends(get_db),
-    s3_client: S3StorageInterface = Depends(get_s3_storage_client),
     jwt_manager=Depends(get_jwt_auth_manager),
 ):
-    auth_header = request.headers.get("Authorization")
-    if not auth_header:
+    if not authorization:
         raise HTTPException(status_code=401, detail="Authorization header is missing")
-    if not auth_header.startswith("Bearer "):
+    if not authorization.startswith("Bearer "):
         raise HTTPException(
             status_code=401,
             detail="Invalid Authorization header format. Expected 'Bearer <token>'",
         )
-
-    token = auth_header.split(" ")[1]
+    token = authorization.split(" ")[1]
     try:
         payload = (
             jwt_manager.decode_token(token)
@@ -61,22 +46,40 @@ async def create_profile(
     except Exception:
         raise HTTPException(status_code=401, detail="Token has expired.")
 
-    current_user_id = int(payload.get("user_id") or payload.get("sub"))
-    current_user = (
+    user_id = int(payload.get("user_id") or payload.get("sub"))
+    user = (
         (
             await db.execute(
                 select(UserModel)
                 .options(selectinload(UserModel.group))
-                .filter(UserModel.id == current_user_id)
+                .filter(UserModel.id == user_id)
             )
         )
         .scalars()
         .first()
     )
-
-    if not current_user:
+    if not user:
         raise HTTPException(status_code=401, detail="Token has expired.")
+    return user
 
+
+@router.post(
+    "/users/{user_id}/profile/",
+    response_model=ProfileResponseSchema,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_profile(
+    user_id: int,
+    current_user: UserModel = Depends(get_current_user),
+    first_name: str = Form(...),
+    last_name: str = Form(...),
+    gender: str = Form(...),
+    date_of_birth: date = Form(...),
+    info: str = Form(...),
+    avatar: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    s3_client: S3StorageInterface = Depends(get_s3_storage_client),
+):
     is_admin = current_user.group and current_user.group.name.upper() == "ADMIN"
     if current_user.id != user_id and not is_admin:
         raise HTTPException(
@@ -119,7 +122,10 @@ async def create_profile(
     try:
         validate_image(avatar)
         avatar_data = await avatar.read()
-        avatar_url = await s3_client.upload_file(avatar.filename, avatar_data)
+
+        file_key = f"avatars/{user_id}_avatar.jpg"
+
+        avatar_url = await s3_client.upload_file(file_key, avatar_data)
     except Exception as e:
         if isinstance(e, ValueError):
             raise HTTPException(status_code=422, detail=str(e))
@@ -129,9 +135,9 @@ async def create_profile(
 
     new_profile = UserProfileModel(
         user_id=user_id,
-        first_name=data.first_name,
-        last_name=data.last_name,
-        gender=data.gender,
+        first_name=data.first_name.lower(),
+        last_name=data.last_name.lower(),
+        gender=data.gender.lower(),
         date_of_birth=data.date_of_birth,
         info=data.info,
         avatar=str(avatar_url),
