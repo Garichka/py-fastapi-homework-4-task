@@ -124,8 +124,8 @@ async def create_profile(
         avatar_data = await avatar.read()
 
         file_key = f"avatars/{user_id}_avatar.jpg"
+        await s3_client.upload_file(file_key, avatar_data)
 
-        avatar_url = await s3_client.upload_file(file_key, avatar_data)
     except Exception as e:
         if isinstance(e, ValueError):
             raise HTTPException(status_code=422, detail=str(e))
@@ -140,7 +140,7 @@ async def create_profile(
         gender=data.gender.lower(),
         date_of_birth=data.date_of_birth,
         info=data.info,
-        avatar=str(avatar_url),
+        avatar=file_key,
     )
 
     db.add(new_profile)
