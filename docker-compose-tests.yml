@@ -9,6 +9,7 @@ services:
     environment:
       - PYTHONPATH=/usr/src/fastapi
       - ENVIRONMENT=testing
+      - DATABASE_URL=postgresql+asyncpg://user:password@db:5432/test_db
       - EMAIL_HOST=mailhog_theater_test
       - EMAIL_PORT=1025
       - EMAIL_HOST_USER=testuser@mate.com
@@ -21,6 +22,8 @@ services:
       - MINIO_PORT=9000
       - MINIO_STORAGE=theater-storage
     depends_on:
+      db:
+        condition: service_healthy
       mailhog:
         condition: service_started
       minio:
@@ -29,6 +32,23 @@ services:
       - ./src:/usr/src/fastapi
     networks:
       - theater_network_test
+
+  db:
+    image: postgres:15-alpine
+    container_name: postgres_theater_test
+    environment:
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=test_db
+    networks:
+      - theater_network_test
+    volumes:
+      - postgres_data_test:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d test_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   mailhog:
     image: mailhog/mailhog
@@ -49,9 +69,6 @@ services:
     environment:
       - MINIO_ROOT_USER=minioadmin
       - MINIO_ROOT_PASSWORD=some_password
-      - MINIO_HOST=minio-theater-test
-      - MINIO_PORT=9000
-      - MINIO_STORAGE=theater-storage
     volumes:
       - minio_data_test:/data
     healthcheck:
@@ -82,6 +99,8 @@ services:
 
 volumes:
   minio_data_test:
+    driver: local
+  postgres_data_test:
     driver: local
 
 networks:
