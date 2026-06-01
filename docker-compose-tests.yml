@@ -3,14 +3,13 @@ services:
     build:
       context: .
       dockerfile: ./docker/tests/Dockerfile
-    container_name: backend_theater_test
     command: [ "pytest", "-c", "/usr/src/config/pytest.ini",
                "-m", "e2e", "--maxfail=5", "--disable-warnings", "-v", "--tb=short"]
     environment:
       - PYTHONPATH=/usr/src/fastapi
       - ENVIRONMENT=testing
       - DATABASE_URL=postgresql+asyncpg://user:password@db:5432/test_db
-      - EMAIL_HOST=mailhog_theater_test
+      - EMAIL_HOST=mailhog
       - EMAIL_PORT=1025
       - EMAIL_HOST_USER=testuser@mate.com
       - EMAIL_HOST_PASSWORD=test_password
@@ -18,7 +17,7 @@ services:
       - MAILHOG_API_PORT=8025
       - MINIO_ROOT_USER=minioadmin
       - MINIO_ROOT_PASSWORD=some_password
-      - MINIO_HOST=minio-theater-test
+      - MINIO_HOST=minio
       - MINIO_PORT=9000
       - MINIO_STORAGE=theater-storage
     depends_on:
@@ -35,7 +34,6 @@ services:
 
   db:
     image: postgres:15-alpine
-    container_name: postgres_theater_test
     environment:
       - POSTGRES_USER=user
       - POSTGRES_PASSWORD=password
@@ -52,7 +50,6 @@ services:
 
   mailhog:
     image: mailhog/mailhog
-    container_name: mailhog_theater_test
     ports:
       - "8025:8025"
       - "1025:1025"
@@ -61,7 +58,6 @@ services:
 
   minio:
     image: minio/minio:latest
-    container_name: minio-theater-test
     command: server --console-address ":9001" /data
     ports:
       - "9000:9000"
@@ -83,7 +79,6 @@ services:
     build:
       context: .
       dockerfile: docker/minio_mc/Dockerfile
-    container_name: minio_mc_theater_test
     command: [ "/bin/sh", "-c", "/commands/setup_minio.sh" ]
     depends_on:
       minio:
@@ -91,7 +86,7 @@ services:
     environment:
       - MINIO_ROOT_USER=minioadmin
       - MINIO_ROOT_PASSWORD=some_password
-      - MINIO_HOST=minio-theater-test
+      - MINIO_HOST=minio
       - MINIO_PORT=9000
       - MINIO_STORAGE=theater-storage
     networks:
