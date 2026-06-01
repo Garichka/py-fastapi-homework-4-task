@@ -144,4 +144,9 @@ async def create_profile(
     db.add(new_profile)
     await db.commit()
     await db.refresh(new_profile)
-    return new_profile
+
+    try:
+        return ProfileResponseSchema.model_validate(new_profile, from_attributes=True)
+    except Exception as e:
+        print(f"DEBUG: Pydantic validation error during serialization: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

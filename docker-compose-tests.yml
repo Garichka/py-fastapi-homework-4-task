@@ -28,7 +28,7 @@ services:
       minio:
         condition: service_healthy
     volumes:
-      - ./src:/usr/src/fastapi
+      - .:/usr/src/fastapi
     networks:
       - theater_network_test
 

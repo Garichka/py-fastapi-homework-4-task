@@ -1,10 +1,9 @@
 from datetime import date
-from pydantic import BaseModel, field_validator
-
+from pydantic import BaseModel, field_validator, model_validator
+from src.config.settings import Settings
 from validation import (
     validate_name,
     validate_gender,
-    validate_image,
     validate_birth_date,
 )
 
@@ -51,6 +50,13 @@ class ProfileResponseSchema(BaseModel):
     date_of_birth: date
     info: str
     avatar: str
+
+    @model_validator(mode="after")
+    def set_avatar_url(self) -> "ProfileResponseSchema":
+        settings = Settings()
+        if not self.avatar.startswith("http"):
+            self.avatar = f"{settings.S3_STORAGE_URL}/{self.avatar}"
+        return self
 
     class Config:
         from_attributes = True
